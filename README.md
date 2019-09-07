@@ -1,2 +1,0 @@
-# ReaLLy
-Reinforcement Learning Library
