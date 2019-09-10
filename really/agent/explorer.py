@@ -117,13 +117,13 @@ class Explorer(Agent):
     def get_test_episodes_history(self):
         return self.test_episodes_history
 
-    def decimate_history(self):
+    def decimate_history(self, dec=1):
         self.episodes_history = [self.episodes_history[i] for i in
                                  range(len(self.episodes_history)) 
-                                 if i % 10 > 0]
+                                 if i % 10 >= dec]
         self.test_episodes_history = [self.test_episodes_history[i] for i in 
                                       range(len(self.test_episodes_history)) 
-                                      if i % 10 > 0]
+                                      if i % 10 >= dec]
 
     def store_episode_history(self, fname):
         EH = np.asarray(self.episodes_history)
