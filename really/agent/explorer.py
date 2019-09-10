@@ -35,24 +35,19 @@ class Explorer(Agent):
     def prefix(self):
         pass
 
-    def init_episode(self, initial_state):#, initial_heights):
-        super().init_episode(initial_state)#, initial_heights)
+    def init_episode(self, initial_state):
+        super().init_episode(initial_state)
         
         self.S = np.copy(initial_state)
         self.R = 0
-        #self.h = initial_heights
         self.steps_history = []
         
-    def see_outcome(self, reward, new_state, 
-                    #new_heights,
-                    moves=None):
+    def see_outcome(self, reward, new_state, moves=None):
         ''' Observe the effects on this player of an action taken (possibly by
             another player.)
             reward Reward earned by this player for its last move
         '''
-        super().see_outcome(reward, new_state,
-                            #new_heights,
-                            moves)
+        super().see_outcome(reward, new_state, moves)
         self.R += reward
         self.S = np.copy(new_state)
 

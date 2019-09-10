@@ -15,9 +15,7 @@ class Agent(object):
         self.G = 0
         self.moves = 0
         
-    def see_outcome(self, reward, new_state,
-                    #h,
-                    moves=0):
+    def see_outcome(self, reward, new_state, moves=0):
         ''' Observe the effects on this agent of an action taken - possibly by
             another agent.
         '''
@@ -35,13 +33,6 @@ class Agent(object):
         ''' Wrap up episode '''
         pass
 
-#     def episode_performance(self):
-#         
-#         # increased significance for a win / loss the sooner it happens
-#         factor = (42-self.moves)/42
-#         
-#         return factor * self.G
-    
     def learn_from_history(self):
         pass
     

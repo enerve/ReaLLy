@@ -13,7 +13,6 @@ import torch.nn as nn
 import random
 
 from .value_function import ValueFunction
-#from .net import Net
 from really import util
 from .conv_net import AllSequential, Flatten
 
@@ -223,7 +222,7 @@ class NN_Bound_FA(ValueFunction):
         output = self._value(S, [action])
         return output[0].item()
 
-    # TODO: definitely doesn't belong in this class
+    # TODO: move to coindrop
     def _valid_actions(self, S):
         return np.nonzero(S[6-1] == 0)[0]
 
@@ -235,7 +234,7 @@ class NN_Bound_FA(ValueFunction):
             v = V[i].item()
         return actions_list[i], v, V.tolist()
 
-    # TODO: maybe just move this to ES
+    # TODO: maybe just move this to EexplorationStrategy
     def random_action(self, S):
         actions_list = self._valid_actions(S)
         return random.choice(actions_list)

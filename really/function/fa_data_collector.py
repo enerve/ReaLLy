@@ -87,8 +87,8 @@ class FADataCollector(object):
         sum = 0
         absum = 0
         for S, a, t in zip(steps_history_state, steps_history_action, steps_history_target): 
+            #TODO: move to coindrop
             if t < -0.899 or t > 0.899:
-                #TODO: coindrop specific
                 #self.logger.debug("%0.2f target for action %d on:\n%s", t, a, S)
                 sum += t
                 absum += 1
@@ -105,10 +105,10 @@ class FADataCollector(object):
 
     def report_collected_dataset(self):
         SHT = np.asarray(self.steps_history_target)
-        # TODO: move to coindrop
+        #TODO: move to coindrop
 #         self.logger.debug("  +1s: %d \t -1s: %d", np.sum(SHT > 0.99),
 #                           np.sum(SHT < 0.01))
-        
+
     def get_data(self):
         return self.steps_history_state, self.steps_history_action, self.steps_history_target
       

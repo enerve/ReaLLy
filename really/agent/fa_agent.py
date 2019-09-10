@@ -24,7 +24,7 @@ class FAAgent(Agent):
         self.logger.setLevel(logging.DEBUG)
 
         # to compare self with simple LA agents
-        #TODO:self.buddy = LookaheadABAgent(config, 2)
+        #TODO: self.buddy = LookaheadABAgent(config, 2)
         
     def prefix(self):
         pref = "faP_" + self.fa.prefix()
@@ -36,7 +36,7 @@ class FAAgent(Agent):
         super().init_episode(initial_state)#, initial_heights)
         self.S = np.copy(initial_state)
 
-        #TODO:self.buddy.init_episode(initial_state, initial_heights)
+        #TODO: self.buddy.init_episode(initial_state, initial_heights)
         
     def see_outcome(self, reward, new_state, 
                     #new_heights, 
@@ -45,7 +45,7 @@ class FAAgent(Agent):
                             moves)
         self.S = new_state
 
-        #TODO:self.buddy.see_move(reward, new_state, new_heights, moves)
+        #TODO: self.buddy.see_move(reward, new_state, new_heights, moves)
 
     def next_action(self):
         ''' Agent's turn. Chooses the next action '''
@@ -63,7 +63,7 @@ class FAAgent(Agent):
 #                                   abs(opp_val + val))
 # #                 self.logger.debug("%s", self.S)
         
-        #TODO:self.debug_buddy_A = self.buddy.next_move()
+        #TODO: self.debug_buddy_A = self.buddy.next_move()
         self.debug_agent_A = A
         self.debug_prev_S = self.S#.copy()
         self.debug_agent_vals = vals
@@ -74,10 +74,11 @@ class FAAgent(Agent):
         ''' Wrap up episode  '''
 
         # Record results of episode end
-       #TODO: self.buddy.episode_over()
+        #TODO: self.buddy.episode_over()
         
 #         if self.G <= 0 and self.debug_buddy_A != self.debug_agent_A:
 #             self.logger.debug("Different action chosen by buddy: %d rather than %d",
 #                               self.debug_buddy_A, self.debug_agent_A)
 #             self.logger.debug("  for state: \n%s", self.debug_prev_S)
 #             self.logger.debug("  vals: \n%s", [round(x, 2) for x in self.debug_agent_vals])
+        pass

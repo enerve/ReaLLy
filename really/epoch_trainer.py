@@ -19,7 +19,6 @@ class EpochTrainer:
         self.episode_factory = episode_factory
         self.explorer_list = explorer_list #TODO: dict with keys
         self.explorer = explorer_list[0]
-        #self.opponent = opponent
         self.learner = learner
         self.training_data_collector = training_data_collector
         self.validation_data_collector = validation_data_collector
@@ -49,6 +48,7 @@ class EpochTrainer:
         
         #self.end_states = {}
 
+        # Evaluate starting performance
         self.evaluator.evaluate(0)
 
         ep = ep_s = self.ep
@@ -70,11 +70,11 @@ class EpochTrainer:
                         if ep_ % 10 == 0:
                             # Save for validation
                             self.explorer.save_episode_for_testing()
-                            #self.opponent.save_game_for_testing()
+                            #TODO: self.opponent.save_game_for_testing()
                         else:
                             # Use for training
                             self.explorer.save_episode_for_training()
-                            #self.opponent.save_game_for_training()
+                            #TODO: self.opponent.save_game_for_training()
     
                         #stS = np.array2string(S, separator='')
                         #if stS in self.end_states:
@@ -84,14 +84,14 @@ class EpochTrainer:
     
                         self.explorer.collect_stats(episode,
                                                     ep, total_episodes)
-                        #self.opponent.collect_stats(episode, ep, total_episodes)
+                        #TODO: self.opponent.collect_stats(episode, ep, total_episodes)
                 
                         if util.checkpoint_reached(ep, 1000):
                             self.stat_e_1000.append(ep)
                             self.logger.debug("Ep %d ", ep)
 
                         ep += 1
-                        
+
                     self.training_data_collector.reset_dataset()
                     self.validation_data_collector.reset_dataset()
 
@@ -135,6 +135,7 @@ class EpochTrainer:
                 
                 # Sacrifice some data for the sake of GPU memory
                 if len(self.explorer.get_episodes_history()) >= 15000:#20000
+                    #TODO: process opponent as well
                     self.logger.debug("Before: %d",
                                       len(self.explorer.get_episodes_history()))
                     self.explorer.decimate_history()
@@ -221,11 +222,11 @@ class EpochTrainer:
     
     def save_stats(self, pref=""):
         self.explorer.save_stats(pref="a_" + pref)
-        #self.opponent.save_stats(pref="o_" + pref)
+        #TODO: self.opponent.save_stats(pref="o_" + pref)
         self.learner.save_stats(pref="l_" + pref)
         self.evaluator.save_stats(pref="t_" + pref)
 
-        self.learner.save_hists(["explorer train"])#, "opponent train"])
+        self.learner.save_hists(["explorer train"])#TODO: , "opponent train"])
         self.learner.write_hist_animation("explorer train")
         
         
@@ -233,7 +234,7 @@ class EpochTrainer:
         self.logger.debug("Loading stats...")
 
         self.explorer.load_stats(subdir, pref="a_" + pref)
-        #self.opponent.load_stats(subdir, pref="o_" + pref)
+        #TODO: self.opponent.load_stats(subdir, pref="o_" + pref)
         self.learner.load_stats(subdir, pref="l_" + pref)
         self.evaluator.load_stats(subdir, pref="t_" + pref)
     
@@ -241,7 +242,7 @@ class EpochTrainer:
     
     def report_stats(self, pref=""):
         self.explorer.report_stats(pref="a_" + pref)
-        #self.opponent.report_stats(pref="o_" + pref)
+        #TODO: self.opponent.report_stats(pref="o_" + pref)
         self.learner.report_stats(pref="l_" + pref)
         self.evaluator.report_stats(pref="t_" + pref)
         

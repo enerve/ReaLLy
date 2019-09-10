@@ -136,15 +136,9 @@ class Learner:
         # TODO: maybe move this to DataCollector instead
 
         maxlen = len(self.stats_currs[source_name][0])
-        # TODO:
-#         rng_max = max(np.max(np.array(self.stats_currs[source_name])),
-#                       np.max(np.array(self.stats_targets[source_name])),
-#                       np.max(np.array(self.stats_deltas[source_name])))
-#         rng_min = min(np.min(np.array(self.stats_currs[source_name])),
-#                       np.min(np.array(self.stats_targets[source_name])),
-#                       np.min(np.array(self.stats_deltas[source_name])))
-        rng_min = -400
-        rng_max = 400
+        # TODO: Thsi is racecar-specific.
+        rng_min = -400 #-1.2
+        rng_max = 400  #1.2
         
         util.save_hist_animation(self.stats_currs[source_name], 100, (rng_min, rng_max),
                                  maxlen, "curr value", "currhist")

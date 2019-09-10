@@ -56,22 +56,6 @@ class NN_FA(ValueFunction):
                 
         #self.sids = self._sample_ids(3000, self.batch_size)
         #self.last_loss = torch.zeros(self.batch_size, 7).cuda()
-                
-#     def initialize_default_net(self):
-#         #         self.net = Net([num_inputs, 500, 500, 500, self.num_outputs])
-# 
-#         net = nn.Sequential(
-#             nn.Conv2d(2, 30, kernel_size=3, stride=1, padding=1),
-#             nn.ReLU(),
-#             nn.Conv2d(30, 50, kernel_size=2, stride=1, padding=0),
-#             nn.ReLU(),
-#             Flatten(),
-#             nn.Linear(50*6*5, 500),
-#             nn.ReLU(),
-#             nn.Linear(500, self.num_outputs),
-#             nn.Sigmoid())
-# 
-#         self.init_net(net)
 
     def init_net(self, net):        
         net.to(self.device)
@@ -298,7 +282,7 @@ class NN_FA(ValueFunction):
                     Y = Y * M  # b x do
                     loss = self.criterion(outputs, Y)  # b x do
                     loss *= M   # b x do
-                     
+                    
                     suml = torch.sum(loss, 0)
                     countl = torch.sum(loss > 0, 0).float()
                     mean_error_cost = suml / (countl + 0.01)
@@ -336,19 +320,17 @@ class NN_FA(ValueFunction):
         num = len(self.stat_error_cost[1:])
 
         n_cost = np.asarray(self.stat_error_cost[1:]).T
-        labels = list(range(n_cost.shape[1]))       
-        cost = n_cost 
+        labels = list(range(n_cost.shape[1]))        
 
         n_v_cost = np.asarray(self.stat_val_error_cost[1:]).T
-#         #labels.extend(["val%d" % i for i in range(n_v_cost.shape[1])])
-#         #cost = np.concatenate([n_cost, n_v_cost], axis=0)
+        labels.extend(["val%d" % i for i in range(n_v_cost.shape[1])])
+        cost = np.concatenate([n_cost, n_v_cost], axis=0)
         avgcost = np.stack([n_cost.mean(axis=0), n_v_cost.mean(axis=0)], axis=0)
         
         util.plot(cost,
                   range(num),
                   labels = labels,
-                  title = "NN training cost across actions",
-                  #title = "NN training/validation cost across actions",
+                  title = "NN training/validation cost across actions",
                   pref=pref+"cost",
                   ylim=None)
 
