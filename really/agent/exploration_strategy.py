@@ -13,6 +13,7 @@ class ExplorationStrategy(object):
         '''
         Constructor
         '''
+        # TODO: explorate should not be in this base class
         self.explorate = explorate # Inclination to explore, e.g. 0, 10, 1000
         self.fa = fa
 

@@ -117,7 +117,8 @@ class NN_FA(ValueFunction):
         i = torch.argmax(V).item()
         v = V[i].item()
         return self.feature_eng.action_from_index(i), v, V.tolist()
-    
+
+    #TODO: Should ideally be in FeatureEng    
     def random_action(self, state):
         return self.feature_eng.random_action(state)
 

@@ -111,6 +111,9 @@ class Explorer(Agent):
 
     def get_test_episodes_history(self):
         return self.test_episodes_history
+    
+    def get_last_episode_history(self):
+        return self.steps_history
 
     def decimate_history(self, dec=1):
         self.episodes_history = [self.episodes_history[i] for i in
