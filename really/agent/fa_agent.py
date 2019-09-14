@@ -8,7 +8,6 @@ import logging
 import numpy as np
 
 from .agent import Agent
-from coindrop.lookahead_ab_agent import LookaheadABAgent
 
 class FAAgent(Agent):
     '''

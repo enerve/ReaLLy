@@ -62,7 +62,6 @@ class EpochTrainer:
                 if not debug_run_first_epoch_data_only or epoch == 0:
                     # Run games to collect new data               
                     for ep_ in range(num_episodes_per_epoch):
-                        # Create racecar_episode for a single episode
                         episode = self.episode_factory.new_episode(self.explorer_list)
                         
                         episode.run()
