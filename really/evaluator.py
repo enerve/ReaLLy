@@ -6,7 +6,7 @@ Created on 7 Sep 2019
 
 class Evaluator():
     
-    def evaluate(self, ep):
+    def evaluate(self, ep, epoch):
         pass
 
     def save_stats(self, pref=None):

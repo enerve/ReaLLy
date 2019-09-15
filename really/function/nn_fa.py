@@ -99,9 +99,10 @@ class NN_FA(ValueFunction):
 
     def _value(self, state):
         X = self.feature_eng.x_adjust(state)
+        self.net.eval()
         with torch.no_grad():
-#             output = self.net(X.unsqueeze(0))[0]
-            output = self.net(X)
+            output = self.net(X.unsqueeze(0))[0]
+#             output = self.net(X)
         return self.feature_eng.value_from_output(output)
     
     def _actions_mask(self, state):
@@ -113,7 +114,7 @@ class NN_FA(ValueFunction):
         return output[ai].item()
 
     def best_action(self, state):
-        V = self._value(state) + 1000 * self._actions_mask(state)
+        V = self._value(state) - 1000 * (1 - self._actions_mask(state))
         i = torch.argmax(V).item()
         v = V[i].item()
         return self.feature_eng.action_from_index(i), v, V.tolist()
@@ -187,6 +188,8 @@ class NN_FA(ValueFunction):
         
         self.logger.debug("Training with %d items...", len(steps_history_x))
 
+        self.net.train()
+
 #         with torch.no_grad():
 #             X = SHX[self.sids]   # b x di
 #             Y = SHT[self.sids]   # b
@@ -214,8 +217,6 @@ class NN_FA(ValueFunction):
         sum_error_cost = torch.zeros(self.num_outputs).to(self.device)
         sum_error_cost.detach()
         count_actions = torch.zeros(self.num_outputs).to(self.device)
-
-        L = []
 
         for i in range(self.max_iterations):
             self.optimizer.zero_grad()
@@ -252,8 +253,6 @@ class NN_FA(ValueFunction):
                 suml = torch.sum(loss, 0)
                 countl = torch.sum(loss > 0, 0).float()
 
-                L.append(loss.detach().cpu().numpy())
-                
 #                 ltz = (suml < 0).byte()
 #                 if ltz.any():
 #                     self.logger.debug("loss < 0")
@@ -294,9 +293,6 @@ class NN_FA(ValueFunction):
             if (i+1) % 1000 == 0:
                 self.logger.debug("   %d / %d", i+1, self.max_iterations)
 
-        Ln = np.asarray(L, dtype=np.float)
-        util.dump(Ln, "statsLoss", '')
-
         self.logger.debug("  trained \tN=%s \tE=%0.3f \tVE=%0.3f", N,
                           self.stat_error_cost[-1].mean().item(),
                           self.stat_val_error_cost[-1].mean().item())
@@ -308,6 +304,9 @@ class NN_FA(ValueFunction):
 
     def collect_stats(self, ep):
         pass
+    
+    def collect_epoch_stats(self, epoch):
+        self.self.feature_eng.collect_epoch_stats(epoch)
     
     def save_stats(self, pref=""):
         # TODO
@@ -360,9 +359,14 @@ class NN_FA(ValueFunction):
                   live=True)
         
     def save_model(self, pref=""):
-        util.torch_save(self.net, pref)
+        self.logger.debug("Saving model")
+        util.torch_save(self.net, "NN_" + pref)
+        self.logger.debug("Saving model state dict")
+        util.torch_save(self.net.state_dict(), "NN_sd_" + pref)
 
-    def load_model(self, fname, load_subdir):
+    def load_model(self, load_subdir, pref=""):
+        fname = "NN_" + pref
+        self.logger.debug("Loading model %s", fname)
         net = util.torch_load(fname, load_subdir)
         net.eval()
         self.init_net(net)

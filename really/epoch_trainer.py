@@ -49,7 +49,7 @@ class EpochTrainer:
         #self.end_states = {}
 
         # Evaluate starting performance
-        self.evaluator.evaluate(0)
+        self.evaluator.evaluate(0, 0)
 
         ep = ep_s = self.ep
         for expl in range(num_explorations):
@@ -142,7 +142,7 @@ class EpochTrainer:
                     self.logger.debug("After: %d", 
                                       len(self.explorer.get_episodes_history()))
                 
-                self.evaluator.evaluate(ep)
+                self.evaluator.evaluate(ep, epoch+1)
 
                 self.logger.debug("  Clock: %d seconds", time.clock() - start_time)
 

@@ -175,29 +175,34 @@ class Plotter:
         debugs = load(fname + "_D", subdir, pref)
         self.I_list = list(zip(ims, debugs))
 
-    def play_animation(self, cmap='hot', vmin=None, vmax=None, 
-                        show=True, save=True, pref=""):
+    def play_animation(self, cmap=None, aspect=None, interpolation=None, 
+                       vmin=None, vmax=None, interval=50, show_axis=False,
+                       show=True, save=True, pref=""):
         fig = plt.figure()
         image_list = []
         ax = plt.gca()
+        if not show_axis:
+            plt.axis('off')
+
         for I in self.I_list:
             P, debug = I
-            im = ax.imshow(P, cmap=cmap, interpolation='nearest',
+            im = ax.imshow(P, cmap=cmap, aspect=aspect,
+                           interpolation=interpolation,
                            vmin=vmin, vmax=vmax)
             _ = plt.title(self.title)
             t = ax.annotate(debug, (10,20)) # add text
             image_list.append([im, t])
 
         ani = animation.ArtistAnimation(fig, image_list,
-                                        interval=50, blit=True,
+                                        interval=interval, blit=True,
                                         repeat_delay=1000)
         if show:
             plt.show()
 
         if save:
-            plt.rcParams['animation.ffmpeg_path'] = arg_bin_dir + 'ffmpeg'
+            plt.rcParams['animation.ffmpeg_path'] = arg_bin_dir + '/ffmpeg'
             Writer = animation.writers['ffmpeg']
-            writer = Writer(fps=15, metadata=dict(artist='enerve'), bitrate=1800)
+            writer = Writer(fps=2, metadata=dict(artist='enerve'), bitrate=1800)
             
             logging.getLogger("matplotlib.animation").setLevel(logging.INFO)
             logging.getLogger("matplotlib.axes").setLevel(logging.INFO)
@@ -207,7 +212,7 @@ class Plotter:
 def save_hist_animation(dists, bins, range, ymax=None, title="", pref=""):
     fig = plt.figure()
     ax1 = fig.add_subplot(1,1,1)
-    plt.rcParams['animation.ffmpeg_path'] = arg_bin_dir + 'ffmpeg'
+    plt.rcParams['animation.ffmpeg_path'] = arg_bin_dir + '/ffmpeg'
     Writer = animation.writers['ffmpeg']
     writer = Writer(fps=2, metadata=dict(artist='enerve'), bitrate=1800)
     def animate(x):
@@ -218,6 +223,7 @@ def save_hist_animation(dists, bins, range, ymax=None, title="", pref=""):
         ax1.hist(x, 100, range)
     ani = animation.FuncAnimation(fig, animate, dists, interval=10)
     ani.save(prefix() + pref + '.mp4', writer=writer)
+    plt.close()
 
 def checkpoint_reached(ep, checkpoint_divisor):
     return checkpoint_divisor > 0 and \

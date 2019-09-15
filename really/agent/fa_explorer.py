@@ -15,7 +15,7 @@ class FAExplorer(Explorer):
     '''
 
     def __init__(self,
-                 config,
+                 config, #TODO: does it make sense to have 'config' in ReaLLy?
                  exploration_strategy):
         
         super().__init__(config)

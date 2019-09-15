@@ -29,6 +29,7 @@ class QLookup(ValueFunction):
         self.feature_eng = feature_eng
 
         # Q is the learned value of a state/action
+        # TODO: this is racecar-specific code, move to feature eng
         self.Q = np.zeros((config.NUM_JUNCTURES,
                            config.NUM_LANES,
                             config.NUM_SPEEDS,
