@@ -11,22 +11,20 @@ import torch.nn as nn
 from .conv_net import Flatten
 
 import logging
-from .value_function import ValueFunction
 from really import util
 
-class NN_FA(ValueFunction):
+class NNModel():
     '''
-    A neural-network action-value function approximator
+    A neural-network model
     '''
 
     def __init__(self,
-                 criterion_str, 
+                 criterion_str,
                  optimizer_str,
                  alpha,
                  regularization_param,
                  batch_size,
-                 max_iterations,
-                 feature_eng):
+                 max_iterations):
         '''
         Constructor
         '''
@@ -34,20 +32,16 @@ class NN_FA(ValueFunction):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
 
-        self.logger.debug("Using NN FA")
+        self.logger.debug("Using NN model")
 
-        self.criterion_str = criterion_str
         self.optimizer_str = optimizer_str
         self.alpha = alpha
         self.regularization_param = regularization_param
+        self.criterion_str = criterion_str
         self.batch_size = batch_size
         self.max_iterations = max_iterations
-        self.feature_eng = feature_eng
         
         self.device = torch.device('cuda' if util.use_gpu else 'cpu')
-
-        num_inputs = feature_eng.num_inputs
-        self.num_outputs = feature_eng.num_actions()
 
         # Stats / debugging
         self.stat_error_cost = []
@@ -56,11 +50,19 @@ class NN_FA(ValueFunction):
                 
         #self.sids = self._sample_ids(3000, self.batch_size)
         #self.last_loss = torch.zeros(self.batch_size, 7).cuda()
+        
+    def prefix(self):
+        return 'neural_a%s_r%s_b%d_i%d_C%s_O%s' % (self.alpha, 
+                                     self.regularization_param,
+                                     self.batch_size,
+                                     self.max_iterations,
+                                     self.criterion_str,
+                                     self.optimizer_str)
 
     def init_net(self, net):        
         net.to(self.device)
 
-        self.net = net        
+        self.net = net
         self.logger.debug("Net:\n%s", self.net)
 
         if self.criterion_str == 'mse':
@@ -86,127 +88,34 @@ class NN_FA(ValueFunction):
                 amsgrad=False)
         else:
             self.logger.error("Unspecified NN Optimizer")
+            
+        #self.num_outputs = 
 
-        
-    def prefix(self):
-        return 'neural_a%s_r%s_b%d_i%d_F%s_C%s_O%s' % (self.alpha, 
-                                     self.regularization_param,
-                                     self.batch_size,
-                                     self.max_iterations,
-                                     self.feature_eng.prefix(),
-                                     self.criterion_str,
-                                     self.optimizer_str)
 
-    def _value(self, state):
-        X = self.feature_eng.x_adjust(state)
+    def value(self, Xbatch):
         self.net.eval()
         with torch.no_grad():
-            output = self.net(X.unsqueeze(0))[0]
-#             output = self.net(X)
-        return self.feature_eng.value_from_output(output)
-    
-    def _actions_mask(self, state):
-        return self.feature_eng.valid_actions_mask(state)
-        
-    def value(self, state, action):
-        ai = self.feature_eng.a_index(action)
-        output = self._value(state)
-        return output[ai].item()
-
-    def best_action(self, state):
-        V = self._value(state) - 1000 * (1 - self._actions_mask(state))
-        i = torch.argmax(V).item()
-        v = V[i].item()
-        return self.feature_eng.action_from_index(i), v, V.tolist()
-
-    #TODO: Should ideally be in FeatureEng    
-    def random_action(self, state):
-        return self.feature_eng.random_action(state)
-
-
-    def update(self, training_data_collector, validation_data_collector):
-        ''' Updates the value function model based on data collected since
-            the last update '''
-
-        training_data_collector.before_update()
-
-        self.train(training_data_collector, validation_data_collector)
-        self.test()
-
-    def _prepare_data(self, steps_history_state, steps_history_action,
-                      steps_history_target):
-        steps_history_x = []
-        steps_history_t = []
-        steps_history_mask = []
-
-        #Sdict = {}
-        #count_conflict = 0
-        self.logger.debug("  Preparing for %d items", len(steps_history_state))
-        
-        for i, (S, a, t) in enumerate(zip(
-                        steps_history_state,
-                        steps_history_action,
-                        steps_history_target)):
-            if i == 250000:
-                self.logger.debug("----------nuff----------")
-                break
-            
-            # TODO: flip ht and hm order
-            hx, ht, hm = self.feature_eng.prepare_data_for(S, a, t)
-            steps_history_x.extend(hx)
-            steps_history_t.extend(ht)
-            steps_history_mask.extend(hm)
-
-            if (i+1) % 10000 == 0:
-                self.logger.debug("prepared %d", i+1)                
-                #self.logger.debug("  conflict count: %d" % count_conflict)
-            
-                
-        #util.hist(list(Sdict.values()), bins=100, range=(2,50))
-        
-        return steps_history_x, steps_history_t, steps_history_mask
+            output = self.net(Xbatch)
+        return output[0]
 
     def _sample_ids(self, l, n):
         ids = torch.cuda.FloatTensor(n) if util.use_gpu else torch.FloatTensor(n)
         ids = (l * ids.uniform_()).long()
         return ids
 
-    def train(self, training_data_collector, validation_data_collector):
-        self.logger.debug("Preparing training data--")
-        steps_history_x, steps_history_t, steps_history_m = \
-            self._prepare_data(*training_data_collector.get_data())
-        self.logger.debug("Preparing validation data--")
-        val_steps_history_x, val_steps_history_t, val_steps_history_m = \
-            self._prepare_data(*validation_data_collector.get_data())
+    def train(self, SHX, SHT, SHM, VSHX, VSHT, VSHM):
+        SHX = SHX.to(self.device)
+        SHT = SHT.to(self.device)
+        SHM = SHM.to(self.device)
+        VSHX = VSHX.to(self.device)
+        VSHT = VSHT.to(self.device)
+        VSHM = VSHM.to(self.device)
         
-        SHX = torch.stack(steps_history_x).to(self.device)
-        SHT = torch.tensor(steps_history_t).to(self.device)
-        SHM = torch.stack(steps_history_m).to(self.device)
-        VSHX = torch.stack(val_steps_history_x).to(self.device)
-        VSHT = torch.tensor(val_steps_history_t).to(self.device)
-        VSHM = torch.stack(val_steps_history_m).to(self.device)
-        
-        self.logger.debug("Training with %d items...", len(steps_history_x))
+        N = SHX.shape[0]
+        self.logger.debug("Training with %d items...", N)
 
-        self.net.train()
+        self.net.train() # Set Training mode
 
-#         with torch.no_grad():
-#             X = SHX[self.sids]   # b x di
-#             Y = SHT[self.sids]   # b
-#             M = SHM[self.sids]   # b x do
-#             Y = torch.unsqueeze(Y, 1)   # b x 1
-#             
-#             # forward
-#             outputs = self.net(X)       # b x do
-#             # loss
-#             Y = Y * M  # b x do
-#             loss = self.criterion(outputs, Y)  # b x do
-#             with torch.no_grad():
-#                 # Zero-out the computed losses for the other actions/outputs
-#                 loss *= M   # b x do
-
-        N = len(steps_history_t)
-        
         # for stats
         preferred_samples = 100
         period = self.max_iterations // preferred_samples
@@ -214,9 +123,7 @@ class NN_FA(ValueFunction):
         if period > self.max_iterations:
             self.logger.warning("max_iterations too small for period plotting")
 
-        sum_error_cost = torch.zeros(self.num_outputs).to(self.device)
-        sum_error_cost.detach()
-        count_actions = torch.zeros(self.num_outputs).to(self.device)
+        sum_error_cost = None
 
         for i in range(self.max_iterations):
             self.optimizer.zero_grad()
@@ -234,7 +141,8 @@ class NN_FA(ValueFunction):
             Y = torch.unsqueeze(Y, 1)   # b x 1
             
             # forward
-            outputs = self.net(X)       # b x do
+            outputs, _ = self.net(X)       # b x do
+            
             # loss
             Y = Y * M  # b x do
             loss = self.criterion(outputs, Y)  # b x do
@@ -243,6 +151,8 @@ class NN_FA(ValueFunction):
                 loss *= M   # b x do
             # backward
             onez = torch.ones(loss.shape).to(self.device) #TODO: move out?
+            
+            
             loss.backward(onez)
             
             # updated weights
@@ -262,8 +172,13 @@ class NN_FA(ValueFunction):
 #                 if i+1==self.max_iterations:
 #                     self.logger.debug("   Last loss:\n  %s", suml / (countl + 0.0001))
 
-                sum_error_cost.add_(suml)  # do
-                count_actions.add_(countl)  # do
+                if sum_error_cost is None:
+                    sum_error_cost = suml.clone().to(self.device)
+                    sum_error_cost.detach()
+                    count_actions = countl.clone().to(self.device)
+                else:
+                    sum_error_cost.add_(suml)  # do
+                    count_actions.add_(countl)  # do
 
                 if (i+1) % period == 0:
                     mean_error_cost = sum_error_cost / (count_actions + 0.01)
@@ -271,14 +186,14 @@ class NN_FA(ValueFunction):
     
                     #self.logger.debug("  loss=%0.2f", sum_error_cost.mean().item())
     
-                    torch.zeros(self.num_outputs, out=sum_error_cost)
-                    torch.zeros(self.num_outputs, out=count_actions)
+                    torch.zeros(sum_error_cost.shape[0], out=sum_error_cost)
+                    torch.zeros(count_actions.shape[0], out=count_actions)
                     
                     # Validation
                     X = VSHX
                     Y = torch.unsqueeze(VSHT, 1)
                     M = VSHM   # N x do
-                    outputs = self.net(X)       # b x do
+                    outputs, _ = self.net(X)       # b x do
                     Y = Y * M  # b x do
                     loss = self.criterion(outputs, Y)  # b x do
                     loss *= M   # b x do
@@ -297,8 +212,6 @@ class NN_FA(ValueFunction):
                           self.stat_error_cost[-1].mean().item(),
                           self.stat_val_error_cost[-1].mean().item())
 
-        
-
     def test(self):
         pass
 
@@ -306,7 +219,7 @@ class NN_FA(ValueFunction):
         pass
     
     def collect_epoch_stats(self, epoch):
-        self.self.feature_eng.collect_epoch_stats(epoch)
+        pass
     
     def save_stats(self, pref=""):
         # TODO

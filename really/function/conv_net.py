@@ -20,11 +20,18 @@ class AllSequential(nn.Module):
         return self.names
     
     def forward(self, x):
-        act_list = []
-        for module in self._modules.values():
+        act_dict = {}
+        for name, module in self._modules.items():
             x = module(x)
-            act_list.append(x)
-        return act_list
+            act_dict[name] = x
+        return x, act_dict
+
+#     def forward(self, x):
+#         act_list = []
+#         for module in self._modules.values():
+#             x = module(x)
+#             act_list.append(x)
+#         return act_list
 
 class Flatten(nn.Module):
     def forward(self, x):
