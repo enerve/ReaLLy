@@ -15,7 +15,7 @@ from really import util
 
 class NNModel():
     '''
-    A neural-network model
+    Manages and trains a neural-network
     '''
 
     def __init__(self,
@@ -114,7 +114,6 @@ class NNModel():
         N = SHX.shape[0]
         self.logger.debug("Training with %d items...", N)
 
-        self.net.train() # Set Training mode
 
         # for stats
         preferred_samples = 100
@@ -141,6 +140,7 @@ class NNModel():
             Y = torch.unsqueeze(Y, 1)   # b x 1
             
             # forward
+            self.net.train() # Set Training mode
             outputs, _ = self.net(X)       # b x do
             
             # loss
@@ -190,6 +190,7 @@ class NNModel():
                     torch.zeros(count_actions.shape[0], out=count_actions)
                     
                     # Validation
+                    self.net.eval()
                     X = VSHX
                     Y = torch.unsqueeze(VSHT, 1)
                     M = VSHM   # N x do
@@ -202,6 +203,12 @@ class NNModel():
                     countl = torch.sum(loss > 0, 0).float()
                     mean_error_cost = suml / (countl + 0.01)
                     self.stat_val_error_cost.append(mean_error_cost.cpu().numpy())
+
+                    #for param in self.net.parameters():
+                    #    self.logger.debug("  W=%0.6f dW=%0.6f    %s", 
+                    #                      torch.mean(torch.abs(param.data)),
+                    #                      torch.mean(torch.abs(param.grad)),
+                    #                      param.shape)
 
                     #self.live_stats()
 

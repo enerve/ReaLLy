@@ -20,11 +20,11 @@ class AllSequential(nn.Module):
         return self.names
     
     def forward(self, x):
-        act_dict = {}
+        activations_dict = {}
         for name, module in self._modules.items():
             x = module(x)
-            act_dict[name] = x
-        return x, act_dict
+            activations_dict[name] = x
+        return x, activations_dict
 
 #     def forward(self, x):
 #         act_list = []
