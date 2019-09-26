@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from .conv_net import Flatten
+from .flatten import Flatten
 
 import logging
 from really import util
@@ -91,12 +91,18 @@ class NNModel():
             
         #self.num_outputs = 
 
+    def activations(self, Xbatch):
+        self.net.eval()
+        with torch.no_grad():
+            output, activations = self.net(Xbatch)
+        return activations
 
     def value(self, Xbatch):
         self.net.eval()
         with torch.no_grad():
-            output = self.net(Xbatch)
-        return output[0]
+            output, _ = self.net(Xbatch)
+        return output
+        
 
     def _sample_ids(self, l, n):
         ids = torch.cuda.FloatTensor(n) if util.use_gpu else torch.FloatTensor(n)
