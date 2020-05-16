@@ -14,7 +14,8 @@ import random
 
 from .value_function import ValueFunction
 from really import util
-from .conv_net import AllSequential, Flatten
+from .all_sequential import AllSequential
+from .flatten import Flatten
 
 class NN_Bound_FA(ValueFunction):
     '''
@@ -56,11 +57,11 @@ class NN_Bound_FA(ValueFunction):
         self.stat_activations = []
         self.W_norm = []
                 
-        self.sids = self._sample_ids(3000, self.batch_size)
-        self.last_loss = torch.zeros(self.batch_size, 7).cuda()
+        #self.sids = self._sample_ids(3000, self.batch_size)
+        #self.last_loss = torch.zeros(self.batch_size, 7).cuda()
                 
-    def initialize_default_net(self):
-        self.logger.debug("Creating new model")
+    def init_default_model(self):
+        #self.logger.debug("Creating new model")
         A = 100
         B = 300
         C = 100
@@ -152,7 +153,7 @@ class NN_Bound_FA(ValueFunction):
         self.net = net
         
         self.logger.debug("Net:\n%s", self.net)
-        self.logger.debug("Criterion: %s", self.criterion)
+        #self.logger.debug("Criterion: %s", self.criterion)
         
     def prefix(self):
         return 'neural_bound_a%s_r%s_b%d_i%d_F%s_NN%s' % (self.alpha, 
@@ -190,31 +191,32 @@ class NN_Bound_FA(ValueFunction):
 #         return self._adjust_output(output[0])
 
     def _bound_value(self, x_list):
-        l = len(x_list) // 2
+        l = len(x_list) #// 2
         # Sends all bound actions as a batch to NN
+        self.net.eval()
         with torch.no_grad():
             XB = torch.stack(x_list).to(self.device)
-            output = torch.t(self.net(XB)[-1])
+            output = torch.t(self.net(XB)[0])
             op1 = output[0][0:l]
-            op2 = output[0][l:2*l]
-            opavg = (op1+op2)/2
+            #op2 = output[0][l:2*l]
+            opavg = op1#(op1+op2)/2
         return self._adjust_output(opavg)
 
     def bound_value(self, B):
         x_list = []
         x_list.append(self.model.feature(B))
-        x_list.append(self.model.feature(np.flip(B, axis=1).copy()))
+        #x_list.append(self.model.feature(np.flip(B, axis=1).copy()))
         return self._bound_value(x_list)
 
     def _value(self, S, actions):
         ''' Gets values for all given actions '''
         x_list = []
-        xm_list = []
+        #xm_list = []
         for action in actions:
             B = self._bind_action(S, action)
             x_list.append(self.model.feature(B))
-            xm_list.append(self.model.feature(np.flip(B, axis=1).copy()))
-        x_list.extend(xm_list)
+            #xm_list.append(self.model.feature(np.flip(B, axis=1).copy()))
+        #x_list.extend(xm_list)
 
         return self._bound_value(x_list)
 
@@ -306,11 +308,10 @@ class NN_Bound_FA(ValueFunction):
 #         self.logger.debug("  +1s: %d \t -1s: %d", torch.sum(SHT > 0.99),
 #                           torch.sum(SHT < 0.01))
 
-
         N = len(steps_history_t)
         
         # for stats
-        preferred_samples = 1000
+        preferred_samples = 100
         period = self.max_iterations // preferred_samples
         period = max(period, 10)
         if period > self.max_iterations:
@@ -334,7 +335,8 @@ class NN_Bound_FA(ValueFunction):
             Y = torch.unsqueeze(Y, 1)   # b x 1
             
             # forward
-            outputs = self.net(X)[-1]       # b x 1
+            self.net.train()
+            outputs = self.net(X)[0]       # b x 1
             # loss
             loss = self.criterion(outputs, Y)  # b x 1
             # backward
@@ -362,12 +364,15 @@ class NN_Bound_FA(ValueFunction):
                     torch.zeros(self.num_outputs, out=count_actions)
                     
                     # Validation
+                    self.net.eval()
                     X = VSHX
                     Y = torch.unsqueeze(VSHT, 1)
-                    outputs = self.net(X)
-                    op_Y = outputs[-1]       # b x 1
+                    #M = VSHM   # N x do
+                    op_Y, acts = self.net(X)
+                    #Y = Y * M  # b x do
                     loss = self.criterion(op_Y, Y)  # b x 1
-                    
+                    #loss *= M   # b x do
+
                     suml = torch.sum(loss, 0)
                     countl = torch.sum(loss > 0, 0).float()
                     mean_error_cost = suml / (countl + 0.01)
@@ -376,13 +381,13 @@ class NN_Bound_FA(ValueFunction):
                     Yo = (op_Y > 0).float()# - (op_Y < 0.5).float()
                     Y = (Y > 0).float()
                     n_o = torch.sum(Y == Yo)
-                    self.logger.debug(" validation target -ish: %d / %d \t cost %0.2f",
-                                      n_o, Yo.shape[0], self.stat_val_error_cost[-1])
+#                     self.logger.debug(" validation target -ish: %d / %d \t cost %0.2f",
+#                                       n_o, Yo.shape[0], self.stat_val_error_cost[-1])
                     val_o = op_Y
 
                     # Dead activations (ReLUs e.g.)
                     act_list = []
-                    for op in outputs:
+                    for name, op in acts.items():
                         activations_on = (op >= 0.000000000001) # b x a
                         #node_activations = torch.sum(activations_on, 0) > 0 # a
                         ratio_alive = torch.mean(activations_on.float()).cpu()
@@ -396,6 +401,12 @@ class NN_Bound_FA(ValueFunction):
                     self.W_norm.append(
                         [torch.norm(param.data).item() for param in self.net.parameters()])
 
+                    for param in self.net.parameters():
+                        self.logger.debug("  W=%0.6f dW=%0.6f    %s", 
+                                          torch.mean(torch.abs(param.data)),
+                                          torch.mean(torch.abs(param.grad)),
+                                          param.shape)
+
                     #self.live_stats()
 
             if (i+1) % 1000 == 0:
@@ -405,11 +416,6 @@ class NN_Bound_FA(ValueFunction):
                           self.stat_error_cost[-1].mean().item(),
                           self.stat_val_error_cost[-1].mean().item())
 
-        for param in self.net.parameters():
-            self.logger.debug("  W=%0.6f dW=%0.6f    %s", 
-                              torch.mean(torch.abs(param.data)),
-                              torch.mean(torch.abs(param.grad)),
-                              param.shape)
 
         if False:
             # Log the worst predictions, for debugging
@@ -488,25 +494,25 @@ class NN_Bound_FA(ValueFunction):
                   title="Weights L2 norm",
                   pref=pref+"W")
 
-        A = np.asarray(self.stat_activations).T
-        util.plot(A,
-                  range(len(self.stat_activations)),
-                  #labels=labels,
-                  labels=self.net.get_names(),
-                  title="Ratio of nodes alive",
-                  pref=pref+"A")
-
-        relu_list = []
-        for key, acts in zip(self.net.get_names(), A):
-            if 'relu' in key:
-                relu_list.append(acts)
-        Ar = np.asarray(relu_list)
-        util.plot(Ar,
-                  range(len(self.stat_activations)),
-                  #labels=labels,
-                  labels=range(len(relu_list)),
-                  title="Ratio of ReLU nodes alive",
-                  pref=pref+"Ar")
+#         A = np.asarray(self.stat_activations).T
+#         util.plot(A,
+#                   range(len(self.stat_activations)),
+#                   #labels=labels,
+#                   labels=self.net.get_names(),
+#                   title="Ratio of nodes alive",
+#                   pref=pref+"A")
+# 
+#         relu_list = []
+#         for key, acts in zip(self.net.get_names(), A):
+#             if 'relu' in key:
+#                 relu_list.append(acts)
+#         Ar = np.asarray(relu_list)
+#         util.plot(Ar,
+#                   range(len(self.stat_activations)),
+#                   #labels=labels,
+#                   labels=range(len(relu_list)),
+#                   title="Ratio of ReLU nodes alive",
+#                   pref=pref+"Ar")
 
     def live_stats(self):
         num = len(self.stat_error_cost[1:])

@@ -14,15 +14,13 @@ class FADataCollector(object):
     '''
 
 
-    def __init__(self, fa):
+    def __init__(self):
         '''
         Constructor
         '''
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
-
-        self.fa = fa #TODO: not needed?
 
         self.reset_dataset()
         
@@ -32,13 +30,13 @@ class FADataCollector(object):
         self.steps_history_action = []
         self.steps_history_target = []
         self.ireplay = None
-        self.pos = self.neg = 0
+#         self.pos = self.neg = 0
 
     def replay_dataset(self):
         ''' Prepare to replay instead of record new data. FOR DEBUGGING ONLY. '''
         if len(self.steps_history_state) > 0:
             self.ireplay = 0
-            self.pos = self.neg = 0
+#             self.pos = self.neg = 0
 
     def record(self, state, action, target):
         ''' Record incoming data rows '''
@@ -61,10 +59,10 @@ class FADataCollector(object):
             self.steps_history_action.append(action)
             self.steps_history_target.append(target)
 
-        if target > 0:
-            self.pos += 1
-        else:
-            self.neg += 1
+#         if target > 0:
+#             self.pos += 1
+#         else:
+#             self.neg += 1
         
     def store_last_dataset(self, pref=""):
         fname = "dataset_" + pref
