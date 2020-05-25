@@ -19,7 +19,7 @@ class NNModel():
     '''
 
     def __init__(self,
-                 criterion_str,
+                 grader,
                  optimizer_str,
                  alpha,
                  regularization_param,
@@ -37,7 +37,7 @@ class NNModel():
         self.optimizer_str = optimizer_str
         self.alpha = alpha
         self.regularization_param = regularization_param
-        self.criterion_str = criterion_str
+        self.grader = grader
         self.batch_size = batch_size
         self.max_iterations = max_iterations
         
@@ -52,11 +52,11 @@ class NNModel():
         #self.last_loss = torch.zeros(self.batch_size, 7).cuda()
         
     def prefix(self):
-        return 'neural_a%s_r%s_b%d_i%d_C%s_O%s' % (self.alpha, 
+        return 'neural_a%s_r%s_b%d_i%d_g%s_O%s' % (self.alpha, 
                                      self.regularization_param,
                                      self.batch_size,
                                      self.max_iterations,
-                                     self.criterion_str,
+                                     self.grader.prefix(),
                                      self.optimizer_str)
 
     def init_net(self, net):        
@@ -64,13 +64,6 @@ class NNModel():
 
         self.net = net
         self.logger.debug("Net:\n%s", self.net)
-
-        if self.criterion_str == 'mse':
-            self.criterion = nn.MSELoss(reduce=False)
-        elif self.criterion_str == 'bce':
-            self.criterion = nn.BCELoss(reduce=False)
-        else:
-            self.logger.error("Unspecified NN Criterion")
         
         if self.optimizer_str == 'sgd':
             self.optimizer = optim.SGD(
@@ -91,11 +84,11 @@ class NNModel():
             
         #self.num_outputs = 
 
-    def activations(self, Xbatch):
+    def all_values(self, Xbatch):
         self.net.eval()
         with torch.no_grad():
             output, activations = self.net(Xbatch)
-        return activations
+        return output, activations
 
     def value(self, Xbatch):
         self.net.eval()
@@ -143,32 +136,18 @@ class NNModel():
                 X = SHX[ids]   # b x di
                 Y = SHT[ids]   # b
                 M = SHM[ids]   # b x do
-            Y = torch.unsqueeze(Y, 1)   # b x 1
-            
+
             # forward
             self.net.train() # Set Training mode
             outputs, _ = self.net(X)       # b x do
             
-            # loss
-            Y = Y * M  # b x do
-            loss = self.criterion(outputs, Y)  # b x do
-            with torch.no_grad():
-                # Zero-out the computed losses for the other actions/outputs
-                loss *= M   # b x do
-            # backward
-            onez = torch.ones(loss.shape).to(self.device) #TODO: move out?
-            
-            
-            loss.backward(onez)
-            
+            suml, countl = self.grader.compute_gradients(outputs, Y, M)
+
             # updated weights
             self.optimizer.step()
             
             # Stats
             with torch.no_grad():
-                suml = torch.sum(loss, 0)
-                countl = torch.sum(loss > 0, 0).float()
-
 #                 ltz = (suml < 0).byte()
 #                 if ltz.any():
 #                     self.logger.debug("loss < 0")
@@ -198,15 +177,12 @@ class NNModel():
                     # Validation
                     self.net.eval()
                     X = VSHX
-                    Y = torch.unsqueeze(VSHT, 1)
+                    Y = VSHT
+                    #Y = torch.unsqueeze(Y, 1)
                     M = VSHM   # N x do
                     outputs, _ = self.net(X)       # b x do
-                    Y = Y * M  # b x do
-                    loss = self.criterion(outputs, Y)  # b x do
-                    loss *= M   # b x do
-                    
-                    suml = torch.sum(loss, 0)
-                    countl = torch.sum(loss > 0, 0).float()
+
+                    suml, countl = self.grader.loss_stats(outputs, Y, M)
                     mean_error_cost = suml / (countl + 0.01)
                     self.stat_val_error_cost.append(mean_error_cost.cpu().numpy())
 
@@ -246,10 +222,10 @@ class NNModel():
         num = len(self.stat_error_cost[1:])
 
         n_cost = np.asarray(self.stat_error_cost[1:]).T
-        labels = list(range(n_cost.shape[1]))        
+        labels = list(range(n_cost.shape[0]))
 
         n_v_cost = np.asarray(self.stat_val_error_cost[1:]).T
-        labels.extend(["val%d" % i for i in range(n_v_cost.shape[1])])
+        labels.extend(["val%d" % i for i in range(n_v_cost.shape[0])])
         cost = np.concatenate([n_cost, n_v_cost], axis=0)
         avgcost = np.stack([n_cost.mean(axis=0), n_v_cost.mean(axis=0)], axis=0)
         

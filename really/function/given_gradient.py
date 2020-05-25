@@ -6,34 +6,50 @@ Created on 23 Sep 2019
 
 import torch
 import torch.nn as nn
-from really.function.given import Given
+from torch.autograd.function import Function
+
+from really import util
+
+DEVICE = None
+
+class Given(Function):
+    '''
+        A custom autograd function that outputs a dummy variable in forward pass,
+        andsimply passes through the given gradient in the backward pass.
+    '''
+
+    @staticmethod
+    def forward(ctx, inp, dummy_dW):
+        ctx.save_for_backward(inp, dummy_dW)
+
+        output = torch.ones(dummy_dW.shape).to(DEVICE) # shape of future w_grads
+        return output
+        
+    @staticmethod
+    def backward(ctx, w_grads):
+        inp, dummy_dW = ctx.saved_tensors
+                
+        d_inp = torch.ones(inp.shape).to(DEVICE)
+        
+        # Ignore loss or output and blindly return given gradient
+        
+        return d_inp, w_grads
+
 
 class GivenGradient(nn.Module):
     '''
-    A module that calculates a Linear output in the forward phase 
-    but uses the given precomputed gradient in the backward phase
+    A loss-function module that simply passes through the given gradient in the
+    backward pass.
     '''
 
-
-    def __init__(self, input_features):
-        '''
-        Constructor
-        '''
+    def __init__(self):
         super(GivenGradient, self).__init__()
-        
-        self.weights = nn.Parameter(torch.Tensor(1, input_features))
-        self.bias = nn.Parameter(torch.Tensor(1))
 
-        self.weights.requires_grad = True
-        self.bias.requires_grad = True
+        global DEVICE
+        DEVICE = torch.device('cuda' if util.use_gpu else 'cpu')
 
-        # TODO: Do better weight initialization
-        self.weights.data.uniform_(-0.1, 0.1)
-        self.bias.data.uniform_(-0.1, 0.1)
-
-    def forward(self, X, G):
-        return Given.apply(X, self.weights, self.bias, G)
-        
+    def forward(self, X, dummy_dW):
+        return Given.apply(X, dummy_dW)
         
         
 if __name__ == '__main__':
@@ -42,6 +58,7 @@ if __name__ == '__main__':
     
     from torch.autograd import Variable
     import random
+    import collections
     
     seed = 123
     random.seed(seed)
@@ -49,27 +66,33 @@ if __name__ == '__main__':
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
 
-    # Test a 10-node output layer
-    gg = GivenGradient(10)
+    # Test LinearForward net with GivenGradient as criterion
+    from really.function import AllSequential
+    from really.function.linear_forward_given_gradient import LinearForward
+
+    net = AllSequential(collections.OrderedDict([
+        ('lfgg', LinearForward(10)),
+        ]))
+    criterion = GivenGradient()
+    
     
     batchsize = 5
     input =  Variable(torch.Tensor(batchsize, 10).uniform_(-1, 1))
     input.requires_grad = True
     w_grads = Variable(torch.Tensor(batchsize, 10).uniform_(-1, 1))
     w_grads.requires_grad = False
-    bias_grad = torch.zeros(1)
-    print("Given grads sum: %s" % w_grads.sum(0, keepdim=True))
+
+    #params = net.parameters()
+    net_out, _ = net(input)    
+    outputs, dummy_dW = net_out
     
-    net = gg
-    #params = net.parameters()    
-    output = net(input, w_grads, bias_grad)
+    loss = criterion(outputs, dummy_dW)
     
-    output.backward(torch.ones(5, 1))
+    loss.backward(w_grads)
     
     for p in net.parameters():
         print("Param: %s" % p)
         print("Grad: %s" % p.grad)
-    print("dX: ", input.grad)
-    
-    print(output)
+         
+    print("X grad: ", input.grad)
     

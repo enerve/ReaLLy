@@ -11,8 +11,10 @@ from .fa_explorer import FAExplorer
 
 from .exploration_strategy import ExplorationStrategy
 from .es_best import ESBest
+from .es_policy import ESPolicy
 
 __all__ = ["Agent",
            "FAAgent",
            "FAExplorer",
-           "ESBest"]
+           "ESBest",
+           "ESPolicy"]

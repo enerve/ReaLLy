@@ -177,7 +177,7 @@ class Plotter:
 
     def play_animation(self, cmap=None, aspect=None, interpolation=None, 
                        vmin=None, vmax=None, interval=50, show_axis=False,
-                       show=True, save=True, pref=""):
+                       show=True, save=False, pref=""):
         fig = plt.figure()
         image_list = []
         ax = plt.gca()

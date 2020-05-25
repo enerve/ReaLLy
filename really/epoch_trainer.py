@@ -8,18 +8,21 @@ import logging
 import time
 
 from really import util
+from really.function import FADataCollector
 
 class EpochTrainer:
     ''' A class that helps train the RL agent in stages, collecting episode
         history for an epoch and then training on that data.
     '''
 
-    def __init__(self, episode_factory, explorer_list, learner, training_data_collector,
+    def __init__(self, episode_factory, explorer_list, fa_learner, pa_learner,
+                 training_data_collector,
                  validation_data_collector, evaluator, prefix):
         self.episode_factory = episode_factory
         self.explorer_list = explorer_list #TODO: dict with keys
         self.explorer = explorer_list[0]
-        self.learner = learner
+        self.fa_learner = fa_learner
+        self.pa_learner = pa_learner
         self.training_data_collector = training_data_collector
         self.validation_data_collector = validation_data_collector
         self.evaluator = evaluator
@@ -102,33 +105,50 @@ class EpochTrainer:
                 start_process_time = time.clock()
                 totaltime_explore += (start_process_time - start_explore_time)
                 
-                self.logger.debug("-------- processing ----------")
+                self.logger.debug("-------- processing for FA ----------")
                 self.logger.debug("Learning from explorer history")
-                self.learner.process(self.explorer.get_episodes_history(),
+                self.fa_learner.process(self.explorer.get_episodes_history(),
                                      self.training_data_collector,
                                      "explorer train")
                 self.training_data_collector.report_collected_dataset()
-                #self.learner.plot_last_hists()
-                self.learner.process(self.explorer.get_test_episodes_history(),
+                #self.fa_learner.plot_last_hists()
+                self.fa_learner.process(self.explorer.get_test_episodes_history(),
                                      self.validation_data_collector,
                                      "explorer val")
 
 #                 self.logger.debug("Learning from opponent history")
-#                 self.learner.process(self.opponent.get_episodes_history(),
+#                 self.fa_learner.process(self.opponent.get_episodes_history(),
 #                                      self.training_data_collector,
 #                                      "opponent train")
-#                 #self.learner.plot_last_hists()
-#                 #self.learner.collect_last_hists()
-#                 self.learner.process(self.opponent.get_test_episodes_history(),
+#                 #self.fa_learner.plot_last_hists()
+#                 #self.fa_learner.collect_last_hists()
+#                 self.fa_learner.process(self.opponent.get_test_episodes_history(),
 #                                      self.validation_data_collector,
 #                                      "opponent val")
 
                 start_training_time = time.clock()
                 totaltime_process += (start_training_time - start_process_time)
 
-                self.logger.debug("-------- training ----------")
-                self.learner.learn(self.training_data_collector,
+                self.logger.debug("-------- training FA ----------")
+                self.fa_learner.learn(self.training_data_collector,
                                    self.validation_data_collector)
+
+
+                self.logger.debug("-------- processing for Policy ----------")
+                pa_training_data_collector = FADataCollector()
+                pa_validation_data_collector = FADataCollector()
+                
+                self.pa_learner.process(self.explorer.get_episodes_history(),
+                                        pa_training_data_collector,
+                                        "explorer train")
+                self.pa_learner.process(self.explorer.get_test_episodes_history(),
+                                        pa_validation_data_collector,
+                                        "explorer val")
+
+                self.logger.debug("-------- training Policy ----------")
+                self.pa_learner.learn(pa_training_data_collector,
+                                      pa_validation_data_collector)
+
 
                 totaltime_train += (time.clock() - start_training_time)
                 
@@ -157,12 +177,12 @@ class EpochTrainer:
         
 
     def load_from_file(self, subdir):
-        self.learner.load_model(subdir)
+        self.fa_learner.load_model(subdir)
         #self.load_stats(subdir)
 
     def save_to_file(self, pref=''):
         # save learned values to file
-        self.learner.save_model(pref=pref)
+        self.fa_learner.save_model(pref=pref)
         
         # save stats to file
         self.save_stats(pref=pref)        
@@ -170,11 +190,12 @@ class EpochTrainer:
     def save_stats(self, pref=""):
         self.explorer.save_stats(pref="a_" + pref)
         #TODO: self.opponent.save_stats(pref="o_" + pref)
-        self.learner.save_stats(pref="l_" + pref)
-        self.evaluator.save_stats(pref="t_" + pref)
+        self.fa_learner.save_stats(pref="l_" + pref)
+        self.pa_learner.save_stats(pref="p_" + pref)
+        self.evaluator.save_stats(pref="t_" + pref) #TODO
 
-        self.learner.save_hists(["explorer train"])#TODO: , "opponent train"])
-        self.learner.write_hist_animation("explorer train")
+        self.fa_learner.save_hists(["explorer train"])#TODO: , "opponent train"])
+        self.fa_learner.write_hist_animation("explorer train")
         
         
     def load_stats(self, subdir, pref=""):
@@ -182,14 +203,15 @@ class EpochTrainer:
 
         self.explorer.load_stats(subdir, pref="a_" + pref)
         #TODO: self.opponent.load_stats(subdir, pref="o_" + pref)
-        self.learner.load_stats(subdir, pref="l_" + pref)
+        self.fa_learner.load_stats(subdir, pref="l_" + pref)
         self.evaluator.load_stats(subdir, pref="t_" + pref)
     
-        #self.learner.load_hists(subdir)
+        #self.fa_learner.load_hists(subdir)
     
     def report_stats(self, pref=""):
         self.explorer.report_stats(pref="a_" + pref)
         #TODO: self.opponent.report_stats(pref="o_" + pref)
-        self.learner.report_stats(pref="l_" + pref)
+        self.fa_learner.report_stats(pref="l_" + pref)
+        self.pa_learner.report_stats(pref="p_" + pref)
         self.evaluator.report_stats(pref="t_" + pref)
-        
+

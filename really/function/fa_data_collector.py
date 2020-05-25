@@ -11,18 +11,17 @@ import numpy as np
 class FADataCollector(object):
     '''
     Helps collect training/validation data rows for future FA updates
+    TODO: rename because it includes PA updates as well
     '''
 
 
-    def __init__(self, fa):
+    def __init__(self):
         '''
         Constructor
         '''
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
-
-        self.fa = fa #TODO: not needed?
 
         self.reset_dataset()
         
@@ -32,13 +31,13 @@ class FADataCollector(object):
         self.steps_history_action = []
         self.steps_history_target = []
         self.ireplay = None
-        self.pos = self.neg = 0
+#         self.pos = self.neg = 0
 
     def replay_dataset(self):
         ''' Prepare to replay instead of record new data. FOR DEBUGGING ONLY. '''
         if len(self.steps_history_state) > 0:
             self.ireplay = 0
-            self.pos = self.neg = 0
+#             self.pos = self.neg = 0
 
     def record(self, state, action, target):
         ''' Record incoming data rows '''
@@ -51,9 +50,9 @@ class FADataCollector(object):
             # Confirm it's an exact repeat
             old_action = self.steps_history_action[self.ireplay]
             if action != old_action:
-                self.logger("Got %d vs %d", action, old_action)
+                self.logger.info("Got %d vs %d", action, old_action)
                 old_state = self.steps_history_state[self.ireplay]
-                self.logger("    %s vs %s", state, old_state)
+                self.logger.info("    %s vs %s", state, old_state)
             self.steps_history_target[self.ireplay] = target
             self.ireplay += 1
         else:
@@ -61,10 +60,10 @@ class FADataCollector(object):
             self.steps_history_action.append(action)
             self.steps_history_target.append(target)
 
-        if target > 0:
-            self.pos += 1
-        else:
-            self.neg += 1
+#         if target > 0:
+#             self.pos += 1
+#         else:
+#             self.neg += 1
         
     def store_last_dataset(self, pref=""):
         fname = "dataset_" + pref

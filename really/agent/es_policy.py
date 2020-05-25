@@ -29,10 +29,9 @@ class ESPolicy(ExplorationStrategy):
         return "policy"
         
     def pick_action(self, S, moves):
-        #action, val, val_list = self.fa.best_action(S)
         action, action_probs = self.pa.pick_action(S)
         
-        self.logger.debug("Taking action %s from val list: %s", action,
-                          action_probs)
+        # self.logger.debug("Taking action %s from val list: %s", action,
+        #                   action_probs)
         
         return action

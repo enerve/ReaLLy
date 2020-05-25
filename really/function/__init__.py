@@ -12,3 +12,6 @@ from .feature_eng import FeatureEng
 from .fa_data_collector import FADataCollector
 from .all_sequential import AllSequential
 from .flatten import Flatten
+from .given_gradient import GivenGradient
+from .linear_forward_given_gradient import LinearForward
+from .grader import Grader
